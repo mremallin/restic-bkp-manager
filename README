@@ -1,0 +1,23 @@
+Restic Backup Manager
+---------------------
+
+Usage:
+------
+  python3 ./restic_backup_manager.py my_config_file.json
+
+Configuration File:
+-------------------
+{
+    "repos" :
+    [
+        {
+            "name" : "sftp:my_backup_server:/Path/To/My/Backup/Repo",
+            "backup_path" : "/home/user/Documents",
+            "password" : "MyRepoPassword1"
+        }
+    ]
+}
+
+Sample Crontab Entry (Every day at 1am):
+----------------------------------------
+0 1 * * * python3 /path/to/restic_bkp_manager/restic_backup_manager.py /path/to/my_config_file.json
