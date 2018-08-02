@@ -71,13 +71,10 @@ def backup_repos(validated_config):
         if not backup_repo_exists(repo):
             create_repo(repo)
         logging.info("Backing up repo %s", repo.name)
-        restic_args = "restic -r {repo_name} -v backup {repo_backup_path}".format(
-            repo_name=repo.name, repo_backup_path=repo.backup_path)
         os.environ["RESTIC_PASSWORD"] = repo.password
-        result = subprocess.run(restic_args,
+        result = subprocess.run(["restic", "-r", repo.name, "-v", "backup", repo.backup_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                shell=True,
                 env=os.environ)
         if result.returncode:
             logging.error("Backup failed with returncode: %s", result.returncode)
