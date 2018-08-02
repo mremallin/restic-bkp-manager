@@ -26,7 +26,7 @@ def validate_repos_section(config_file_repos):
         skip_repo = False
         for field in ['name', 'backup_path', 'password']:
             if field not in repo:
-                logging.warning("Repo is missing", field, repo)
+                logging.warning("Repo %s is missing field %s", repo.name, field)
                 skip_repo = True
                 break
         if skip_repo:
@@ -41,9 +41,36 @@ def validate_config_file(config_file_json):
     }
     return validated_config
 
+def create_repo(repo):
+    logging.info("Attempting to create backup repo %s", repo.name)
+    os.environ["RESTIC_PASSWORD"] = repo.password
+    result = subprocess.run(["restic", "-r", repo.name, "init"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=os.environ)
+    if result.returncode:
+        logging.error("Failed to create repository %s with returncode %s",
+                      repo.name, result.returncode)
+        logging.error(result.stderr.decode("utf-8"))
+    logging.info(result.stdout.decode("utf-8"))
+
+def backup_repo_exists(repo):
+    logging.debug("Checking if repo %s exists", repo.name)
+    os.environ["RESTIC_PASSWORD"] = repo.password
+    result = subprocess.run(["restic", "-r", repo.name, "snapshots"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=os.environ)
+    logging.debug(result.stderr.decode("utf-8"))
+    if result.returncode and "Is there a repository at the following location" in result.stderr.decode("utf-8"):
+        return False
+    return True
+
 def backup_repos(validated_config):
     for repo in validated_config['validated_repos']:
-        logging.info("Backing up repo:", repo.name)
+        if not backup_repo_exists(repo):
+            create_repo(repo)
+        logging.info("Backing up repo %s", repo.name)
         restic_args = "restic -r {repo_name} -v backup {repo_backup_path}".format(
             repo_name=repo.name, repo_backup_path=repo.backup_path)
         os.environ["RESTIC_PASSWORD"] = repo.password
@@ -58,9 +85,10 @@ def backup_repos(validated_config):
         logging.info(result.stdout.decode("utf-8"))
 
 def main():
-    logging.basicConfig(format='%(asctime)s:%(levelname)-8s: %(message)s')
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s:%(levelname)-8s: %(message)s')
     program_arguments = parseArguments()
-    logging.info("Using config file located at:", program_arguments.config_file)
+    logging.info("Using config file located at: %s", program_arguments.config_file)
     with open(program_arguments.config_file) as config_file:
         loaded_config_file = json.load(config_file)
     validated_config = validate_config_file(loaded_config_file)
