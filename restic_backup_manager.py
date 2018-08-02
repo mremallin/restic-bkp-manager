@@ -8,6 +8,7 @@ import argparse
 import json
 import subprocess
 import os
+import logging
 
 from collections import namedtuple
 
@@ -25,7 +26,7 @@ def validate_repos_section(config_file_repos):
         skip_repo = False
         for field in ['name', 'backup_path', 'password']:
             if field not in repo:
-                print("Repo is missing", field, repo)
+                logging.warning("Repo is missing", field, repo)
                 skip_repo = True
                 break
         if skip_repo:
@@ -42,7 +43,7 @@ def validate_config_file(config_file_json):
 
 def backup_repos(validated_config):
     for repo in validated_config['validated_repos']:
-        print("Backing up repo:", repo.name)
+        logging.info("Backing up repo:", repo.name)
         restic_args = "restic -r {repo_name} -v backup {repo_backup_path}".format(
             repo_name=repo.name, repo_backup_path=repo.backup_path)
         os.environ["RESTIC_PASSWORD"] = repo.password
@@ -52,13 +53,14 @@ def backup_repos(validated_config):
                 shell=True,
                 env=os.environ)
         if result.returncode:
-            print("Backup failed with returncode:", result.returncode)
-            print(result.stderr.decode("utf-8"))
-        print(result.stdout.decode("utf-8"))
+            logging.error("Backup failed with returncode: %s", result.returncode)
+            logging.error(result.stderr.decode("utf-8"))
+        logging.info(result.stdout.decode("utf-8"))
 
 def main():
+    logging.basicConfig(format='%(asctime)s:%(levelname)-8s: %(message)s')
     program_arguments = parseArguments()
-    print("Using config file located at:", program_arguments.config_file)
+    logging.info("Using config file located at:", program_arguments.config_file)
     with open(program_arguments.config_file) as config_file:
         loaded_config_file = json.load(config_file)
     validated_config = validate_config_file(loaded_config_file)
