@@ -1,4 +1,4 @@
-#/usr/bin/env python3
+#!/usr/bin/env python3
 
 #
 # This is a handy script to manage a bunch of restic repos and backups
