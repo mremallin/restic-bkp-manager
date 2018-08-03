@@ -37,7 +37,7 @@ def validate_repos_section(config_file_repos):
 def validate_config_section(config_file_configs):
     config_dict = {}
     for config_item in config_file_configs:
-        if config_item in ['keep-daily', 'keep-weekly', 'keep-monthly', 'keep-yearly', 'keep-last']:
+        if config_item in ['keep-daily', 'keep-weekly', 'keep-monthly', 'keep-yearly', 'keep-last', 'b2-account-id', 'b2-account-key']:
             config_dict[config_item] = config_file_configs[config_item]
         else:
             logging.warning("Unknown configuration item %s", config_item)
@@ -53,6 +53,15 @@ def validate_config_file(config_file_json):
     if "config" in config_file_json:
         validated_config["validated_config"] = validate_config_section(config_file_json['config'])
     return validated_config
+
+def setup_environment_config(validated_config):
+    for config, item in validated_config.items():
+        if "b2-account-id" in config:
+            os.environ["B2_ACCOUNT_ID"] = str(item)
+            logging.debug("Added B2_ACCOUNT_ID")
+        elif "b2-account-key" in config:
+            os.environ["B2_ACCOUNT_KEY"] = str(item)
+            logging.debug("Added B2_ACCOUNT_KEY")
 
 def create_repo(repo):
     logging.info("Attempting to create backup repo %s", repo.name)
@@ -74,7 +83,6 @@ def backup_repo_exists(repo):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=os.environ)
-    logging.debug(result.stderr.decode("utf-8"))
     if result.returncode and "Is there a repository at the following location" in result.stderr.decode("utf-8"):
         return False
     return True
@@ -133,6 +141,7 @@ def main():
     with open(program_arguments.config_file) as config_file:
         loaded_config_file = json.load(config_file)
     validated_config = validate_config_file(loaded_config_file)
+    setup_environment_config(validated_config['validated_config'])
     backup_repos(validated_config)
 
 if __name__ == "__main__":
