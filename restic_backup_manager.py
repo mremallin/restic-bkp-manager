@@ -141,7 +141,8 @@ def main():
     with open(program_arguments.config_file) as config_file:
         loaded_config_file = json.load(config_file)
     validated_config = validate_config_file(loaded_config_file)
-    setup_environment_config(validated_config['validated_config'])
+    if 'validated_config' in validated_config:
+        setup_environment_config(validated_config['validated_config'])
     backup_repos(validated_config)
 
 if __name__ == "__main__":
